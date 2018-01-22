@@ -43,7 +43,7 @@ namespace FolderSync
 
                 tvSource.Nodes.Clear();
                 TreeNode root = tvSource.Nodes.Add(directory.Name);
-                this.LoadDirectory(directory, root);
+                this.LoadDirectory(directory, root, chkSortSourceLastModified.Checked);
                 root.Expand();
 
                 sourceLoaded = true;
@@ -71,7 +71,7 @@ namespace FolderSync
 
                 tvDestination.Nodes.Clear();
                 TreeNode root = tvDestination.Nodes.Add(directory.Name);
-                this.LoadDirectory(directory, root);
+                this.LoadDirectory(directory, root, chkSortDestLastModified.Checked);
                 root.Expand();
 
                 destLoaded = true;
@@ -83,7 +83,7 @@ namespace FolderSync
             DirectoryInfo dir = e.Node.Tag as DirectoryInfo;
             if (dir != null)
             {
-                LoadDirectory(dir, e.Node);
+                LoadDirectory(dir, e.Node, chkSortSourceLastModified.Checked);
             }
         }
 
@@ -92,14 +92,20 @@ namespace FolderSync
             DirectoryInfo dir = e.Node.Tag as DirectoryInfo;
             if (dir != null)
             {
-                LoadDirectory(dir, e.Node);
+                LoadDirectory(dir, e.Node, chkSortDestLastModified.Checked);
             }
         }
-        private void LoadDirectory(DirectoryInfo dir, TreeNode node)
+        private void LoadDirectory(DirectoryInfo dir, TreeNode node, bool sortByLastModified)
         {
+            IEnumerable<DirectoryInfo> directories = dir.GetDirectories().OrderBy(d => d.Name);
+            if (sortByLastModified)
+            {
+                directories = directories.OrderByDescending(d => d.LastWriteTimeUtc);
+            }
+
             node.Nodes.Clear();
-            foreach (DirectoryInfo child in dir.GetDirectories().OrderBy(p => p.Name))
-            {              
+            foreach (DirectoryInfo child in directories)
+            {
                 TreeNode folderNode = new TreeNode(child.Name);
                 folderNode.Tag = child;
                 string menuText = "Add to Sync";
@@ -144,12 +150,12 @@ namespace FolderSync
             else
             {
                 this.SetRemove(node);
-            }      
+            }
         }
 
         private void tvSource_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            this.SetAdd(e.Node);            
+            this.SetAdd(e.Node);
         }
 
         private void tvDestination_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
@@ -157,7 +163,7 @@ namespace FolderSync
             this.SetRemove(e.Node);
         }
 
-        Dictionary<string, SyncCommand> commands = 
+        Dictionary<string, SyncCommand> commands =
             new Dictionary<string, SyncCommand>(StringComparer.OrdinalIgnoreCase);
         private void SetAdd(TreeNode node)
         {
@@ -168,13 +174,13 @@ namespace FolderSync
                 node.ForeColor = Color.Black;
                 commands.Remove(info.FullName);
             }
-            else if(!commands.Keys.Any(p => info.FullName.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            else if (!commands.Keys.Any(p => info.FullName.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             {
                 node.ContextMenu.MenuItems[0].Text = "Remove from Sync";
                 node.ForeColor = highlighted;
                 SyncCommand command = new AddSyncCommand(((FileSystemInfo)node.Tag));
                 commands[command.Path] = command;
-            }            
+            }
         }
 
         private void SetRemove(TreeNode node)
@@ -196,13 +202,15 @@ namespace FolderSync
         }
 
         bool syncing = false;
+        bool cancel = false;
         private void btnSync_Click(object sender, EventArgs e)
         {
             if (syncing)
             {
+                cancel = true;
                 return;
             }
-
+            
             if (!sourceLoaded)
             {
                 MessageBox.Show("Source Directory not loaded");
@@ -226,58 +234,71 @@ namespace FolderSync
 
             foreach (SyncCommand command in removes)
             {
-                WriteMessage($"Deleting {command.Path}");
-                try
+                if (!cancel)
                 {
-                    if (command.FileSystemInfo.Exists)
+                    try
                     {
-                        if (command.FileSystemInfo is DirectoryInfo)
+                        command.FileSystemInfo.Refresh();
+                        if (command.FileSystemInfo.Exists)
                         {
-                            ((DirectoryInfo)command.FileSystemInfo).Delete(true);
-                        }
-                        else
-                        {
-                            command.FileSystemInfo.Delete();
+                            WriteMessage($"Deleting {command.Path}");
+                            if (command.FileSystemInfo is DirectoryInfo)
+                            {
+                                ((DirectoryInfo)command.FileSystemInfo).Delete(true);
+                            }
+                            else
+                            {
+                                command.FileSystemInfo.Delete();
+                            }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    WriteMessage($"Error when removing {command.FileSystemInfo.FullName} {ex}");
+                    catch (Exception ex)
+                    {
+                        WriteMessage($"Error when removing {command.FileSystemInfo.FullName} {ex}");
+                    }
                 }
             }
-
 
             foreach (SyncCommand command in adds)
             {
-                try
+                if (!cancel)
                 {
-                    WriteMessage($"Copying {command.Path}");
-
-                    string relativePath = command.Path.Replace(txtSourcePath.Text, "");
-                    string copyToPath = txtDestinationPath.Text + relativePath;
-
-                    if (command.FileSystemInfo is FileInfo)
+                    try
                     {
-                        CopyFile(command.FileSystemInfo.FullName, copyToPath);
+                        WriteMessage($"Copying {command.Path}");
+
+                        string relativePath = command.Path.Replace(txtSourcePath.Text, "");
+                        string copyToPath = txtDestinationPath.Text + relativePath;
+
+                        if (command.FileSystemInfo is FileInfo)
+                        {
+                            CopyFile(command.FileSystemInfo.FullName, copyToPath);
+                        }
+                        else
+                        {
+                            CopyDirectory(command.FileSystemInfo.FullName, copyToPath);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        CopyDirectory(command.FileSystemInfo.FullName, copyToPath);
+                        WriteMessage($"Error when adding {command.FileSystemInfo.FullName} {ex}");
                     }
-                }
-                catch (Exception ex)
-                {
-                    WriteMessage($"Error when adding {command.FileSystemInfo.FullName} {ex}");
                 }
             }
 
-            WriteMessage("\r\nComplete!");
+            cancel = false;
             syncing = false;
+
+            WriteMessage("\r\nComplete!");
         }
 
         public void CopyFile(string source, string destination)
         {
+            if (cancel)
+            {
+                return;
+            }
+
             WriteMessage($"Copying File {source}");
 
             string dir = Path.GetDirectoryName(destination);
@@ -290,7 +311,7 @@ namespace FolderSync
             {
                 FileInfo sourceFile = new FileInfo(source);
                 FileInfo destinationFile = new FileInfo(destination);
-                if(sourceFile.Length == destinationFile.Length)
+                if (sourceFile.Length == destinationFile.Length)
                 {
                     WriteMessage($"Copying File {source} skipped");
                     return;
@@ -302,11 +323,16 @@ namespace FolderSync
 
         public void CopyDirectory(string source, string destination)
         {
+            if (cancel)
+            {
+                return;
+            }
+
             WriteMessage($"Copying Directory {source}");
             foreach (DirectoryInfo child in new DirectoryInfo(source).GetDirectories())
             {
                 CopyDirectory(
-                    Path.Combine(source, child.Name), 
+                    Path.Combine(source, child.Name),
                     Path.Combine(destination, child.Name));
             }
 
@@ -332,6 +358,7 @@ namespace FolderSync
             }
 
             txtStatus.AppendText($"\r\n{msg}");
+            btnSync.Text = syncing ? "Cancel" : "Sync";
         }
 
         private void tvSource_KeyPress(object sender, KeyPressEventArgs e)

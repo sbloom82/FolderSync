@@ -32,6 +32,8 @@
             this.panel3 = new System.Windows.Forms.Panel();
             this.tvSource = new System.Windows.Forms.TreeView();
             this.panel6 = new System.Windows.Forms.Panel();
+            this.chkSortSourceLastModified = new System.Windows.Forms.CheckBox();
+            this.btnChooseSource = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.txtSourcePath = new System.Windows.Forms.TextBox();
             this.btnLoadSource = new System.Windows.Forms.Button();
@@ -39,6 +41,8 @@
             this.panel2 = new System.Windows.Forms.Panel();
             this.tvDestination = new System.Windows.Forms.TreeView();
             this.panel7 = new System.Windows.Forms.Panel();
+            this.chkSortDestLastModified = new System.Windows.Forms.CheckBox();
+            this.btnDestinationChoose = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.txtDestinationPath = new System.Windows.Forms.TextBox();
             this.btnLoadDestination = new System.Windows.Forms.Button();
@@ -48,8 +52,6 @@
             this.btnSync = new System.Windows.Forms.Button();
             this.splitter2 = new System.Windows.Forms.Splitter();
             this.splitter3 = new System.Windows.Forms.Splitter();
-            this.btnChooseSource = new System.Windows.Forms.Button();
-            this.btnDestinationChoose = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.panel3.SuspendLayout();
             this.panel6.SuspendLayout();
@@ -92,6 +94,7 @@
             // 
             // panel6
             // 
+            this.panel6.Controls.Add(this.chkSortSourceLastModified);
             this.panel6.Controls.Add(this.btnChooseSource);
             this.panel6.Controls.Add(this.label1);
             this.panel6.Controls.Add(this.txtSourcePath);
@@ -101,6 +104,29 @@
             this.panel6.Name = "panel6";
             this.panel6.Size = new System.Drawing.Size(436, 82);
             this.panel6.TabIndex = 4;
+            // 
+            // chkSortSourceLastModified
+            // 
+            this.chkSortSourceLastModified.AutoSize = true;
+            this.chkSortSourceLastModified.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.chkSortSourceLastModified.Location = new System.Drawing.Point(266, 2);
+            this.chkSortSourceLastModified.Name = "chkSortSourceLastModified";
+            this.chkSortSourceLastModified.Size = new System.Drawing.Size(164, 21);
+            this.chkSortSourceLastModified.TabIndex = 5;
+            this.chkSortSourceLastModified.Text = "Sort By Last Modified";
+            this.chkSortSourceLastModified.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.chkSortSourceLastModified.UseVisualStyleBackColor = true;
+            // 
+            // btnChooseSource
+            // 
+            this.btnChooseSource.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnChooseSource.Location = new System.Drawing.Point(395, 23);
+            this.btnChooseSource.Name = "btnChooseSource";
+            this.btnChooseSource.Size = new System.Drawing.Size(35, 23);
+            this.btnChooseSource.TabIndex = 4;
+            this.btnChooseSource.Text = "...";
+            this.btnChooseSource.UseVisualStyleBackColor = true;
+            this.btnChooseSource.Click += new System.EventHandler(this.btnChooseSource_Click);
             // 
             // label1
             // 
@@ -164,6 +190,7 @@
             // 
             // panel7
             // 
+            this.panel7.Controls.Add(this.chkSortDestLastModified);
             this.panel7.Controls.Add(this.btnDestinationChoose);
             this.panel7.Controls.Add(this.label2);
             this.panel7.Controls.Add(this.txtDestinationPath);
@@ -173,6 +200,29 @@
             this.panel7.Name = "panel7";
             this.panel7.Size = new System.Drawing.Size(439, 82);
             this.panel7.TabIndex = 5;
+            // 
+            // chkSortDestLastModified
+            // 
+            this.chkSortDestLastModified.AutoSize = true;
+            this.chkSortDestLastModified.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.chkSortDestLastModified.Location = new System.Drawing.Point(268, 2);
+            this.chkSortDestLastModified.Name = "chkSortDestLastModified";
+            this.chkSortDestLastModified.Size = new System.Drawing.Size(164, 21);
+            this.chkSortDestLastModified.TabIndex = 6;
+            this.chkSortDestLastModified.Text = "Sort By Last Modified";
+            this.chkSortDestLastModified.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.chkSortDestLastModified.UseVisualStyleBackColor = true;
+            // 
+            // btnDestinationChoose
+            // 
+            this.btnDestinationChoose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnDestinationChoose.Location = new System.Drawing.Point(397, 22);
+            this.btnDestinationChoose.Name = "btnDestinationChoose";
+            this.btnDestinationChoose.Size = new System.Drawing.Size(35, 23);
+            this.btnDestinationChoose.TabIndex = 5;
+            this.btnDestinationChoose.Text = "...";
+            this.btnDestinationChoose.UseVisualStyleBackColor = true;
+            this.btnDestinationChoose.Click += new System.EventHandler(this.btnDestinationChoose_Click);
             // 
             // label2
             // 
@@ -262,28 +312,6 @@
             this.splitter3.TabIndex = 4;
             this.splitter3.TabStop = false;
             // 
-            // btnChooseSource
-            // 
-            this.btnChooseSource.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnChooseSource.Location = new System.Drawing.Point(395, 23);
-            this.btnChooseSource.Name = "btnChooseSource";
-            this.btnChooseSource.Size = new System.Drawing.Size(35, 23);
-            this.btnChooseSource.TabIndex = 4;
-            this.btnChooseSource.Text = "...";
-            this.btnChooseSource.UseVisualStyleBackColor = true;
-            this.btnChooseSource.Click += new System.EventHandler(this.btnChooseSource_Click);
-            // 
-            // btnDestinationChoose
-            // 
-            this.btnDestinationChoose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnDestinationChoose.Location = new System.Drawing.Point(397, 22);
-            this.btnDestinationChoose.Name = "btnDestinationChoose";
-            this.btnDestinationChoose.Size = new System.Drawing.Size(35, 23);
-            this.btnDestinationChoose.TabIndex = 5;
-            this.btnDestinationChoose.Text = "...";
-            this.btnDestinationChoose.UseVisualStyleBackColor = true;
-            this.btnDestinationChoose.Click += new System.EventHandler(this.btnDestinationChoose_Click);
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -333,6 +361,8 @@
         private System.Windows.Forms.TextBox txtStatus;
         private System.Windows.Forms.Button btnChooseSource;
         private System.Windows.Forms.Button btnDestinationChoose;
+        private System.Windows.Forms.CheckBox chkSortSourceLastModified;
+        private System.Windows.Forms.CheckBox chkSortDestLastModified;
     }
 }
 
