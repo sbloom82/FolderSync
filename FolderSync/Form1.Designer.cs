@@ -28,6 +28,8 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel3 = new System.Windows.Forms.Panel();
             this.tvSource = new System.Windows.Forms.TreeView();
@@ -52,6 +54,8 @@
             this.btnSync = new System.Windows.Forms.Button();
             this.splitter2 = new System.Windows.Forms.Splitter();
             this.splitter3 = new System.Windows.Forms.Splitter();
+            this.images = new System.Windows.Forms.ImageList(this.components);
+            this.btnCompare = new System.Windows.Forms.Button();
             this.panel1.SuspendLayout();
             this.panel3.SuspendLayout();
             this.panel6.SuspendLayout();
@@ -107,6 +111,7 @@
             // 
             // chkSortSourceLastModified
             // 
+            this.chkSortSourceLastModified.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.chkSortSourceLastModified.AutoSize = true;
             this.chkSortSourceLastModified.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
             this.chkSortSourceLastModified.Location = new System.Drawing.Point(266, 2);
@@ -266,6 +271,7 @@
             // 
             this.panel5.Controls.Add(this.txtStatus);
             this.panel5.Controls.Add(this.btnSync);
+            this.panel5.Controls.Add(this.btnCompare);
             this.panel5.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel5.Location = new System.Drawing.Point(0, 537);
             this.panel5.Name = "panel5";
@@ -275,20 +281,20 @@
             // txtStatus
             // 
             this.txtStatus.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtStatus.Location = new System.Drawing.Point(0, 23);
+            this.txtStatus.Location = new System.Drawing.Point(0, 60);
             this.txtStatus.Multiline = true;
             this.txtStatus.Name = "txtStatus";
             this.txtStatus.ReadOnly = true;
             this.txtStatus.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.txtStatus.Size = new System.Drawing.Size(878, 165);
+            this.txtStatus.Size = new System.Drawing.Size(878, 128);
             this.txtStatus.TabIndex = 1;
             // 
             // btnSync
             // 
             this.btnSync.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnSync.Location = new System.Drawing.Point(0, 0);
+            this.btnSync.Location = new System.Drawing.Point(0, 31);
             this.btnSync.Name = "btnSync";
-            this.btnSync.Size = new System.Drawing.Size(878, 23);
+            this.btnSync.Size = new System.Drawing.Size(878, 29);
             this.btnSync.TabIndex = 0;
             this.btnSync.Text = "Sync";
             this.btnSync.UseVisualStyleBackColor = true;
@@ -311,6 +317,26 @@
             this.splitter3.Size = new System.Drawing.Size(878, 3);
             this.splitter3.TabIndex = 4;
             this.splitter3.TabStop = false;
+            // 
+            // images
+            // 
+            this.images.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("images.ImageStream")));
+            this.images.TransparentColor = System.Drawing.Color.Transparent;
+            this.images.Images.SetKeyName(0, "blank.png");
+            this.images.Images.SetKeyName(1, "24-em-check.png");
+            this.images.Images.SetKeyName(2, "cross_circle.png");
+            this.images.Images.SetKeyName(3, "system-question-alt-02.png");
+            // 
+            // btnCompare
+            // 
+            this.btnCompare.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnCompare.Location = new System.Drawing.Point(0, 0);
+            this.btnCompare.Name = "btnCompare";
+            this.btnCompare.Size = new System.Drawing.Size(878, 31);
+            this.btnCompare.TabIndex = 2;
+            this.btnCompare.Text = "Compare";
+            this.btnCompare.UseVisualStyleBackColor = true;
+            this.btnCompare.Click += new System.EventHandler(this.btnCompare_Click);
             // 
             // Form1
             // 
@@ -363,6 +389,8 @@
         private System.Windows.Forms.Button btnDestinationChoose;
         private System.Windows.Forms.CheckBox chkSortSourceLastModified;
         private System.Windows.Forms.CheckBox chkSortDestLastModified;
+        private System.Windows.Forms.ImageList images;
+        private System.Windows.Forms.Button btnCompare;
     }
 }
 

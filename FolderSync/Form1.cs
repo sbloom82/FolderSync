@@ -18,6 +18,9 @@ namespace FolderSync
         public Form1()
         {
             InitializeComponent();
+
+            tvSource.ImageList = images;
+            tvDestination.ImageList = images;
         }
 
         bool sourceLoaded = false;
@@ -43,6 +46,7 @@ namespace FolderSync
 
                 tvSource.Nodes.Clear();
                 TreeNode root = tvSource.Nodes.Add(directory.Name);
+                root.ImageIndex = root.SelectedImageIndex = -1;
                 this.LoadDirectory(directory, root, chkSortSourceLastModified.Checked);
                 root.Expand();
 
@@ -71,11 +75,140 @@ namespace FolderSync
 
                 tvDestination.Nodes.Clear();
                 TreeNode root = tvDestination.Nodes.Add(directory.Name);
+                root.ImageIndex = root.SelectedImageIndex = -1;
                 this.LoadDirectory(directory, root, chkSortDestLastModified.Checked);
                 root.Expand();
 
                 destLoaded = true;
             }
+        }
+
+        bool cancelCompare;
+        bool comparing;
+        private void Compare()
+        {
+            if (comparing)
+            {
+                cancelCompare = true;
+                return;
+            }
+            else
+            {
+                cancelCompare = false;
+            }
+
+            if (destLoaded && sourceLoaded)
+            {
+                DirectoryInfo source = new DirectoryInfo(this.txtSourcePath.Text);
+                DirectoryInfo destination = new DirectoryInfo(this.txtDestinationPath.Text);
+                if (!source.Exists || !destination.Exists)
+                {
+                    return;
+                }
+
+                if (!comparing)
+                {
+                    comparing = true;
+
+                    CompareDirectories(source, tvSource.Nodes[0], destination);
+
+                    CompareDirectories(destination, tvDestination.Nodes[0], source);
+
+                    comparing = false;
+                }
+            }
+            SetTreeNodeIndex(null, 0);
+        }
+
+        public bool CompareDirectories(DirectoryInfo source, TreeNode sourceNode, DirectoryInfo destination)
+        {
+            if (cancelCompare)
+            {
+                return false;
+            }
+
+            var sourceFiles = source.EnumerateFiles().ToDictionary(f => f.Name, f => f);
+            var destinationFiles = destination.EnumerateFiles().ToDictionary(f => f.Name, f => f);
+            var sourceDirs = source.EnumerateDirectories().ToDictionary(f => f.Name, f => f);
+            var destinationDirs = destination.EnumerateDirectories().ToDictionary(f => f.Name, f => f);
+
+            bool equal = true;
+
+            foreach (FileInfo file in sourceFiles.Values)
+            {
+                TreeNode fileNode = null;
+                if (sourceNode != null)
+                {
+                    foreach (TreeNode node in sourceNode.Nodes)
+                    {
+                        if (node.Tag != null && ((FileSystemInfo)node.Tag).FullName == file.FullName)
+                        {
+                            fileNode = node;
+                            break;
+                        }
+                    }
+                }
+
+                if (destinationFiles.ContainsKey(file.Name))
+                {
+                    FileInfo destinationFile = destinationFiles[file.Name];
+                    if (file.Length == destinationFile.Length)
+                    {
+                        //checkmark on node 
+                        SetTreeNodeIndex(fileNode, 1);                       
+                    }
+                    else
+                    {
+                        SetTreeNodeIndex(fileNode, 2);
+                        equal = false;
+                    }
+                }
+                else
+                {
+                    SetTreeNodeIndex(fileNode, 3);
+                    equal = false;
+                }
+            }
+
+
+            foreach (DirectoryInfo dir in sourceDirs.Values)
+            {
+                TreeNode dirNode = null;
+                if (sourceNode != null)
+                {
+                    foreach (TreeNode node in sourceNode.Nodes)
+                    {
+                        if (node.Tag != null && ((FileSystemInfo)node.Tag).FullName == dir.FullName)
+                        {
+                            dirNode = node;
+                            break;
+                        }
+                    }
+                }
+
+                if (destinationDirs.ContainsKey(dir.Name))
+                {
+                    DirectoryInfo destDir = destinationDirs[dir.Name];
+                    if (CompareDirectories(dir, dirNode, destDir))
+                    {
+                        SetTreeNodeIndex(dirNode, 1);
+                    }
+                    else
+                    {
+                        SetTreeNodeIndex(dirNode, 2);
+                        equal = false;
+                    }
+                }
+                else
+                {
+                    SetTreeNodeIndex(dirNode, 3);
+                    equal = false;
+                }
+            }
+
+            SetTreeNodeIndex(sourceNode, equal  ? 1 : 2);
+         
+            return equal;            
         }
 
         private void tvSource_BeforeExpand(object sender, TreeViewCancelEventArgs e)
@@ -107,8 +240,13 @@ namespace FolderSync
             foreach (DirectoryInfo child in directories)
             {
                 TreeNode folderNode = new TreeNode(child.Name);
+                folderNode.ImageIndex = folderNode.SelectedImageIndex = -1;
                 folderNode.Tag = child;
                 string menuText = "Add to Sync";
+                if (node.TreeView == tvDestination)
+                {
+                    menuText += " (Delete Folder)";
+                }
                 if (commands.ContainsKey(child.FullName))
                 {
                     folderNode.ForeColor = highlighted;
@@ -125,8 +263,13 @@ namespace FolderSync
             foreach (FileInfo file in dir.GetFiles().OrderBy(f => f.Name))
             {
                 TreeNode fileNode = new TreeNode(file.Name);
+                fileNode.ImageIndex = fileNode.SelectedImageIndex = -1;
                 fileNode.Tag = file;
                 string menuText = "Add to Sync";
+                if (node.TreeView == tvDestination)
+                {
+                    menuText += " (Delete File)";
+                }
                 if (commands.ContainsKey(file.FullName))
                 {
                     menuText = "Remove from Sync";
@@ -399,6 +542,32 @@ namespace FolderSync
                 txtSourcePath.Text = fbd.SelectedPath;
                 btnLoadSource_Click(sender, e);
             }
+        }
+
+        public delegate void SetTreeNodeImageIndexDelegate(TreeNode node, int index);
+        public void SetTreeNodeIndex(TreeNode node, int index)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new MethodInvoker(delegate
+                {
+                    SetTreeNodeIndex(node, index);
+                }));
+                return;
+            }
+
+            btnCompare.Text = comparing ? "Cancel" : "Compare";
+
+            if (node != null)
+            {
+                node.ImageIndex = index;
+                node.SelectedImageIndex = index;
+            }        
+        }
+
+        private void btnCompare_Click(object sender, EventArgs e)
+        {
+            Task.Run(() => Compare());
         }
     }
 
