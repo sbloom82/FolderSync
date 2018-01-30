@@ -13,14 +13,29 @@ namespace FolderSync
 {
     public partial class Form1 : Form
     {
+
+        public static Form1 instance;
         Color highlighted = Color.Green;
+        Settings settings = new Settings();
 
         public Form1()
         {
+            instance = this;
+
             InitializeComponent();
+
+            settings.Read();
+
+            txtSourcePath.Text = settings.LastSourceFolder ?? "";
+            chkSortSourceLastModified.Checked = settings.SortSourceByModified;
+            txtDestinationPath.Text = settings.LastDestinationFolder ?? "";
+            chkSortDestLastModified.Checked = settings.SortDestinationByModified;
 
             tvSource.ImageList = images;
             tvDestination.ImageList = images;
+
+            btnLoadSource_Click(null, null);
+            btnLoadDestination_Click(null, null);
         }
 
         bool sourceLoaded = false;
@@ -51,6 +66,9 @@ namespace FolderSync
                 root.Expand();
 
                 sourceLoaded = true;
+
+                settings.SetValue(nameof(settings.LastSourceFolder), txtSourcePath.Text);
+                settings.SetValue(nameof(settings.SortSourceByModified), chkSortSourceLastModified.Checked);
             }
         }
 
@@ -80,6 +98,10 @@ namespace FolderSync
                 root.Expand();
 
                 destLoaded = true;
+
+
+                settings.SetValue(nameof(settings.LastDestinationFolder), txtDestinationPath.Text);
+                settings.SetValue(nameof(settings.SortDestinationByModified), chkSortDestLastModified.Checked);
             }
         }
 
@@ -155,7 +177,7 @@ namespace FolderSync
                     if (file.Length == destinationFile.Length)
                     {
                         //checkmark on node 
-                        SetTreeNodeIndex(fileNode, 1);                       
+                        SetTreeNodeIndex(fileNode, 1);
                     }
                     else
                     {
@@ -206,9 +228,9 @@ namespace FolderSync
                 }
             }
 
-            SetTreeNodeIndex(sourceNode, equal  ? 1 : 2);
-         
-            return equal;            
+            SetTreeNodeIndex(sourceNode, equal ? 1 : 2);
+
+            return equal;
         }
 
         private void tvSource_BeforeExpand(object sender, TreeViewCancelEventArgs e)
@@ -236,6 +258,12 @@ namespace FolderSync
                 directories = directories.OrderByDescending(d => d.LastWriteTimeUtc);
             }
 
+            IEnumerable<FileInfo> files = dir.GetFiles().OrderBy(d => d.Name);
+            if (sortByLastModified)
+            {
+                files = files.OrderByDescending(d => d.LastWriteTimeUtc);
+            }
+
             node.Nodes.Clear();
             foreach (DirectoryInfo child in directories)
             {
@@ -260,7 +288,7 @@ namespace FolderSync
                 folderNode.Nodes.Add("");
             }
 
-            foreach (FileInfo file in dir.GetFiles().OrderBy(f => f.Name))
+            foreach (FileInfo file in files)
             {
                 TreeNode fileNode = new TreeNode(file.Name);
                 fileNode.ImageIndex = fileNode.SelectedImageIndex = -1;
@@ -279,6 +307,7 @@ namespace FolderSync
                 MenuItem item = new MenuItem(menuText, new EventHandler(node_Sync));
                 item.Tag = fileNode;
                 fileNode.ContextMenu.MenuItems.Add(item);
+                fileNode.ContextMenu.MenuItems.Add(new MenuItem("Open", new EventHandler(node_Open)) { Tag = fileNode });
                 node.Nodes.Add(fileNode);
             }
         }
@@ -295,6 +324,20 @@ namespace FolderSync
                 this.SetRemove(node);
             }
         }
+        private void node_Open(object sender, EventArgs e)
+        {
+            TreeNode node = ((MenuItem)sender).Tag as TreeNode;
+            var file = node.Tag as FileSystemInfo;
+            if (file != null)
+            {
+                using (System.Diagnostics.Process p = new System.Diagnostics.Process())
+                {
+                    p.StartInfo = new System.Diagnostics.ProcessStartInfo(file.FullName);
+                    p.Start();
+                }
+            }
+        }
+
 
         private void tvSource_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
         {
@@ -321,7 +364,7 @@ namespace FolderSync
             {
                 node.ContextMenu.MenuItems[0].Text = "Remove from Sync";
                 node.ForeColor = highlighted;
-                SyncCommand command = new AddSyncCommand(((FileSystemInfo)node.Tag));
+                SyncCommand command = new AddIfNewerSyncCommand(((FileSystemInfo)node.Tag));
                 commands[command.Path] = command;
             }
         }
@@ -353,7 +396,7 @@ namespace FolderSync
                 cancel = true;
                 return;
             }
-            
+
             if (!sourceLoaded)
             {
                 MessageBox.Show("Source Directory not loaded");
@@ -385,14 +428,7 @@ namespace FolderSync
                         if (command.FileSystemInfo.Exists)
                         {
                             WriteMessage($"Deleting {command.Path}");
-                            if (command.FileSystemInfo is DirectoryInfo)
-                            {
-                                ((DirectoryInfo)command.FileSystemInfo).Delete(true);
-                            }
-                            else
-                            {
-                                command.FileSystemInfo.Delete();
-                            }
+                            command.Execute();
                         }
                     }
                     catch (Exception ex)
@@ -402,25 +438,17 @@ namespace FolderSync
                 }
             }
 
-            foreach (SyncCommand command in adds)
+            foreach (AddSyncCommand command in adds)
             {
                 if (!cancel)
                 {
                     try
                     {
                         WriteMessage($"Copying {command.Path}");
-
                         string relativePath = command.Path.Replace(txtSourcePath.Text, "");
                         string copyToPath = txtDestinationPath.Text + relativePath;
-
-                        if (command.FileSystemInfo is FileInfo)
-                        {
-                            CopyFile(command.FileSystemInfo.FullName, copyToPath);
-                        }
-                        else
-                        {
-                            CopyDirectory(command.FileSystemInfo.FullName, copyToPath);
-                        }
+                        command.CopyToPath = copyToPath;
+                        command.Execute();
                     }
                     catch (Exception ex)
                     {
@@ -433,9 +461,11 @@ namespace FolderSync
             syncing = false;
 
             WriteMessage("\r\nComplete!");
+
+            this.Compare();
         }
 
-        public void CopyFile(string source, string destination)
+        public void CopyFile(string source, string destination, bool force = false)
         {
             if (cancel)
             {
@@ -454,7 +484,7 @@ namespace FolderSync
             {
                 FileInfo sourceFile = new FileInfo(source);
                 FileInfo destinationFile = new FileInfo(destination);
-                if (sourceFile.Length == destinationFile.Length)
+                if (force || sourceFile.Length == destinationFile.Length)
                 {
                     WriteMessage($"Copying File {source} skipped");
                     return;
@@ -472,6 +502,12 @@ namespace FolderSync
             }
 
             WriteMessage($"Copying Directory {source}");
+
+            if (!Directory.Exists(destination))
+            {
+                Directory.CreateDirectory(destination);
+            }
+
             foreach (DirectoryInfo child in new DirectoryInfo(source).GetDirectories())
             {
                 CopyDirectory(
@@ -562,7 +598,7 @@ namespace FolderSync
             {
                 node.ImageIndex = index;
                 node.SelectedImageIndex = index;
-            }        
+            }
         }
 
         private void btnCompare_Click(object sender, EventArgs e)
@@ -579,15 +615,62 @@ namespace FolderSync
         {
             this.FileSystemInfo = fileSystemInfo;
         }
+
+        public abstract void Execute();
     }
 
     public class AddSyncCommand : SyncCommand
     {
         public AddSyncCommand(FileSystemInfo fileSystemInfo) : base(fileSystemInfo) { }
+
+        public string CopyToPath { get; set; }
+
+        public override void Execute()
+        {
+            if (this.FileSystemInfo is FileInfo)
+            {
+                Form1.instance.CopyFile(this.FileSystemInfo.FullName, CopyToPath);
+            }
+            else
+            {
+                Form1.instance.CopyDirectory(this.FileSystemInfo.FullName, CopyToPath);
+            }
+        }
+    }
+
+    public class AddIfNewerSyncCommand : AddSyncCommand
+    {
+        public AddIfNewerSyncCommand(FileSystemInfo fileSystemInfo) : base(fileSystemInfo) { }
+
+        public override void Execute()
+        {
+            base.Execute();
+
+            /*
+            FileInfo copyToFile = new FileInfo(CopyToPath);
+            if (!copyToFile.Exists ||
+                copyToFile
+                copyToFile.LastWriteTimeUtc < this.FileSystemInfo.LastWriteTimeUtc)
+            {
+                base.Execute();
+            } */
+        }
     }
 
     public class RemoveSyncCommand : SyncCommand
     {
         public RemoveSyncCommand(FileSystemInfo fileSystemInfo) : base(fileSystemInfo) { }
+
+        public override void Execute()
+        {
+            if (this.FileSystemInfo is DirectoryInfo)
+            {
+                ((DirectoryInfo)this.FileSystemInfo).Delete(true);
+            }
+            else
+            {
+                this.FileSystemInfo.Delete();
+            }
+        }
     }
 }
